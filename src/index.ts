@@ -64,7 +64,7 @@ export function validateProveRequest(body: any): body is ProveRequest {
 
 export function createApp(dependencies: Dependencies): Express {
   const app = express();
-  app.use(express.json());
+  app.use(express.json({ limit: '10mb' })); // Increase limit for large circuit files
 
   app.post('/prove', async (req: Request, res: Response) => {
     console.log('Received a request to /prove');
