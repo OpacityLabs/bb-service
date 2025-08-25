@@ -1,4 +1,5 @@
-FROM ubuntu:24.04
+# Build stage with bb-tools
+FROM ubuntu:24.04 AS bb-tools
 
 # -- argument for version -------------------------------------------------
         ARG BB_VERSION=0.82.3
@@ -21,8 +22,33 @@ RUN curl -L https://raw.githubusercontent.com/AztecProtocol/aztec-packages/refs/
 
 ENV PATH="/root/.bb:$PATH"
 
-VOLUME ["/target"]
-
 RUN bbup --version ${BB_VERSION}
 
-ENTRYPOINT ["bb"]
+# Runtime stage for Express service
+FROM node:18-slim
+
+# Copy bb tools from build stage
+COPY --from=bb-tools /root/.bb /root/.bb
+ENV PATH="/root/.bb:$PATH"
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm install
+
+# Copy source code
+COPY . .
+
+# Build TypeScript
+RUN npm run build
+
+VOLUME ["/target"]
+
+# Expose Express port
+EXPOSE 3000
+
+# Run Express service
+CMD ["npm", "start"]
