@@ -1,6 +1,7 @@
 import express, { Express, Request, Response } from 'express';
 import { CompiledCircuit, InputMap } from '@noir-lang/noir_js';
 import { generateProof } from './generateProof';
+import { BBCli, DefaultBBCli } from './bbCli';
 
 export interface ProveRequest {
   circuit: CompiledCircuit;
@@ -13,13 +14,18 @@ export interface ProofService {
 
 export interface Dependencies {
   proofService: ProofService;
+  bbCli: BBCli;
 }
 
 export class DefaultProofService implements ProofService {
+  constructor(private bbCli: BBCli) {}
+
   async generateProof(circuit: CompiledCircuit, input: InputMap): Promise<any> {
-    return generateProof(circuit, input);
+    return generateProof(circuit, input, this.bbCli);
   }
 }
+
+export { BBCli, DefaultBBCli } from './bbCli';
 
 export function validateProveRequest(body: any): body is ProveRequest {
   if (!body || typeof body !== 'object') {
@@ -96,8 +102,10 @@ export function createApp(dependencies: Dependencies): Express {
 }
 
 if (require.main === module) {
+  const bbCli = new DefaultBBCli();
   const dependencies: Dependencies = {
-    proofService: new DefaultProofService()
+    proofService: new DefaultProofService(bbCli),
+    bbCli: bbCli
   };
   
   const app = createApp(dependencies);

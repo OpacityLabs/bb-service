@@ -2,14 +2,15 @@ import request from 'supertest';
 import { Express } from 'express';
 import { createApp, Dependencies, ProofService, validateProveRequest } from '../src/index';
 import { CompiledCircuit, InputMap } from '@noir-lang/noir_js';
+import { BBCli } from '../src/bbCli';
 
-class MockProofService implements ProofService {
+class MockBBCli implements BBCli {
   private shouldFail: boolean = false;
-  private mockProof: any = { proof: 'mock-proof-data', publicInputs: [] };
+  private mockProof: any = { proof: new Uint8Array([1, 2, 3]), publicInputs: [] };
 
   async generateProof(circuit: CompiledCircuit, input: InputMap): Promise<any> {
     if (this.shouldFail) {
-      throw new Error('Mock proof generation failed');
+      throw new Error('Mock BB CLI proof generation failed');
     }
     return this.mockProof;
   }
@@ -19,14 +20,25 @@ class MockProofService implements ProofService {
   }
 }
 
+class MockProofService implements ProofService {
+  constructor(private bbCli: BBCli) {}
+
+  async generateProof(circuit: CompiledCircuit, input: InputMap): Promise<any> {
+    return this.bbCli.generateProof(circuit, input);
+  }
+}
+
 describe('Prove Endpoint', () => {
   let app: Express;
+  let mockBBCli: MockBBCli;
   let mockProofService: MockProofService;
 
   beforeEach(() => {
-    mockProofService = new MockProofService();
+    mockBBCli = new MockBBCli();
+    mockProofService = new MockProofService(mockBBCli);
     const dependencies: Dependencies = {
-      proofService: mockProofService
+      proofService: mockProofService,
+      bbCli: mockBBCli
     };
     app = createApp(dependencies);
   });
@@ -72,7 +84,7 @@ describe('Prove Endpoint', () => {
   });
 
   it('should return 500 when proof generation fails', async () => {
-    mockProofService.setShouldFail(true);
+    mockBBCli.setShouldFail(true);
 
     const validRequest = {
       circuit: { 
@@ -90,6 +102,7 @@ describe('Prove Endpoint', () => {
 
     expect(response.status).toBe(500);
     expect(response.body.error).toBe('Failed to generate proof');
+    expect(response.body.details).toBe('Mock BB CLI proof generation failed');
   });
 });
 
