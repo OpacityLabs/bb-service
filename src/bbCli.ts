@@ -50,18 +50,13 @@ export class DefaultBBCli implements BBCli {
         console.error(`[BBCli] Witness generation failed:`, witnessError);
         throw witnessError;
       }
-
-      // Run bb prove command
-      // Create proof directory (BB creates 'proof' file inside it)
-      const proofDir = join(tempDir, 'proof_dir');
-      await this.mkdir(proofDir);
       
       const proveArgs = [
         'prove',
         '--scheme', 'ultra_honk',
         '-b', circuitPath,
         '-w', witnessPath,
-        '-o', proofDir
+        '-o', tempDir
       ];
       
       try {
@@ -73,8 +68,7 @@ export class DefaultBBCli implements BBCli {
 
       // Read the generated proof
       try {
-        const actualProofPath = join(proofDir, 'proof');
-        const proofBuffer = await readFileAsync(actualProofPath);
+        const proofBuffer = await readFileAsync(proofPath);
         
         // Parse BB output format to ProofData
         return {
