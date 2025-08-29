@@ -113,6 +113,18 @@ describe('Docker Integration Test', () => {
     console.log('Proof verification successful!');
   }, timeout);
 
+  it('should respond to health check', async () => {
+    const response = await fetch(`http://localhost:${context.port}/health`);
+    
+    expect(response.status).toBe(200);
+    
+    const responseBody = await response.json();
+    expect(responseBody.status).toBe('healthy');
+    expect(responseBody.service).toBe('bb-service');
+    expect(responseBody.timestamp).toBeDefined();
+    expect(new Date(responseBody.timestamp)).toBeInstanceOf(Date);
+  });
+
   it('should handle invalid circuit in Docker', async () => {
     const invalidRequest = {
       circuit: {

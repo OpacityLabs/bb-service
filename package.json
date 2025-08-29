@@ -7,6 +7,8 @@
     "dev": "nodemon src/index.ts",
     "build": "tsc",
     "test": "jest",
+    "test:unit": "jest --testPathIgnorePatterns=docker-integration",
+    "test:integration": "jest docker-integration",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"
   },

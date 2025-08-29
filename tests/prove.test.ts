@@ -35,6 +35,33 @@ class MockProofService implements ProofService {
   }
 }
 
+describe('Health Endpoint', () => {
+  let app: Express;
+  let mockBBCli: MockBBCli;
+  let mockProofService: MockProofService;
+
+  beforeEach(() => {
+    mockBBCli = new MockBBCli();
+    mockProofService = new MockProofService(mockBBCli);
+    const dependencies: Dependencies = {
+      proofService: mockProofService,
+      bbCli: mockBBCli
+    };
+    app = createApp(dependencies);
+  });
+
+  it('should return health status', async () => {
+    const response = await request(app)
+      .get('/health');
+
+    expect(response.status).toBe(200);
+    expect(response.body.status).toBe('healthy');
+    expect(response.body.service).toBe('bb-service');
+    expect(response.body.timestamp).toBeDefined();
+    expect(new Date(response.body.timestamp)).toBeInstanceOf(Date);
+  });
+});
+
 describe('Prove Endpoint', () => {
   let app: Express;
   let mockBBCli: MockBBCli;

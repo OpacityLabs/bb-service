@@ -124,6 +124,14 @@ export function createApp(dependencies: Dependencies): Express {
   const app = express();
   app.use(express.json({ limit: '10mb' })); // Increase limit for large circuit files
 
+  app.get('/health', (req: Request, res: Response) => {
+    res.status(200).json({ 
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      service: 'bb-service'
+    });
+  });
+
   app.post('/prove', async (req: Request, res: Response) => {
     console.log('Received a request to /prove');
     
