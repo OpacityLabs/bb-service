@@ -106,21 +106,6 @@ describe('Docker Integration Test', () => {
     });
 
     const verifyBody = await verifyResponse.json();
-    console.log('Verify response status:', verifyResponse.status);
-    console.log('Verify response body:', verifyBody);
-    
-    // Get Docker container logs to see detailed BB CLI output
-    try {
-      const logsResult = await runCommand('docker', ['logs', context.containerName]);
-      console.log('Docker container logs:');
-      console.log(logsResult.stdout);
-      if (logsResult.stderr) {
-        console.log('Docker container stderr:');
-        console.log(logsResult.stderr);
-      }
-    } catch (logError) {
-      console.warn('Failed to get Docker logs:', logError);
-    }
     
     expect(verifyResponse.status).toBe(200);
     expect(verifyBody.message).toBe('Proof verification completed');
