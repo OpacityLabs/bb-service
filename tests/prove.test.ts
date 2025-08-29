@@ -15,6 +15,13 @@ class MockBBCli implements BBCli {
     return this.mockProof;
   }
 
+  async verifyProof(circuit: CompiledCircuit, proof: any): Promise<boolean> {
+    if (this.shouldFail) {
+      throw new Error('Mock BB CLI proof verification failed');
+    }
+    return true; // Always return valid for mock
+  }
+
   setShouldFail(shouldFail: boolean) {
     this.shouldFail = shouldFail;
   }
@@ -103,6 +110,57 @@ describe('Prove Endpoint', () => {
     expect(response.status).toBe(500);
     expect(response.body.error).toBe('Failed to generate proof');
     expect(response.body.details).toBe('Mock BB CLI proof generation failed');
+  });
+
+  it('should verify proof successfully', async () => {
+    const validRequest = {
+      circuit: { 
+        bytecode: 'valid-bytecode',
+        abi: { parameters: [] },
+        debug_symbols: 'mock-debug',
+        file_map: {}
+      },
+      proof: { proof: new Uint8Array([1, 2, 3]), publicInputs: [] }
+    };
+
+    const response = await request(app)
+      .post('/verify')
+      .send(validRequest);
+
+    expect(response.status).toBe(200);
+    expect(response.body.message).toBe('Proof verification completed');
+    expect(response.body.isValid).toBe(true);
+  });
+
+  it('should return 400 for invalid verify request', async () => {
+    const response = await request(app)
+      .post('/verify')
+      .send({});
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe('Invalid request body. Expected circuit (CompiledCircuit) and proof (ProofData) parameters.');
+  });
+
+  it('should return 500 when proof verification fails', async () => {
+    mockBBCli.setShouldFail(true);
+
+    const validRequest = {
+      circuit: { 
+        bytecode: 'valid-bytecode',
+        abi: { parameters: [] },
+        debug_symbols: 'mock-debug',
+        file_map: {}
+      },
+      proof: { proof: new Uint8Array([1, 2, 3]), publicInputs: [] }
+    };
+
+    const response = await request(app)
+      .post('/verify')
+      .send(validRequest);
+
+    expect(response.status).toBe(500);
+    expect(response.body.error).toBe('Failed to verify proof');
+    expect(response.body.details).toBe('Mock BB CLI proof verification failed');
   });
 });
 

@@ -27,6 +27,14 @@ describe('Docker Integration Test', () => {
       port: 3001 // Use different port to avoid conflicts
     };
     
+    // Rebuild Docker image to ensure latest changes are included
+    console.log('Rebuilding Docker image...');
+    await runCommand('docker', [
+      'build',
+      '-t', 'bb-service-test',
+      '.'
+    ]);
+    
     console.log('Starting Docker container...');
     const result = await runCommand('docker', [
       'run',
@@ -70,9 +78,9 @@ describe('Docker Integration Test', () => {
       },
       body: JSON.stringify(requestBody)
     });
-
-    expect(response.status).toBe(200);
     
+    expect(response.status).toBe(200);
+
     const responseBody = await response.json();
     expect(responseBody.message).toBe('Proof generated successfully');
     expect(responseBody.proof).toBeDefined();
@@ -83,6 +91,41 @@ describe('Docker Integration Test', () => {
     if (responseBody.proof.proof.data) {
       expect(responseBody.proof.proof.data.length).toBeGreaterThan(0);
     }
+
+    // Verify the proof using the /verify endpoint
+    console.log('Verifying proof with /verify endpoint...');
+    const verifyResponse = await fetch(`http://localhost:${context.port}/verify`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        circuit: testCircuit,
+        proof: responseBody.proof
+      })
+    });
+
+    const verifyBody = await verifyResponse.json();
+    console.log('Verify response status:', verifyResponse.status);
+    console.log('Verify response body:', verifyBody);
+    
+    // Get Docker container logs to see detailed BB CLI output
+    try {
+      const logsResult = await runCommand('docker', ['logs', context.containerName]);
+      console.log('Docker container logs:');
+      console.log(logsResult.stdout);
+      if (logsResult.stderr) {
+        console.log('Docker container stderr:');
+        console.log(logsResult.stderr);
+      }
+    } catch (logError) {
+      console.warn('Failed to get Docker logs:', logError);
+    }
+    
+    expect(verifyResponse.status).toBe(200);
+    expect(verifyBody.message).toBe('Proof verification completed');
+    expect(verifyBody.isValid).toBe(true);
+    console.log('Proof verification successful!');
   }, timeout);
 
   it('should handle invalid circuit in Docker', async () => {
