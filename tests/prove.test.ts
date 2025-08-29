@@ -115,6 +115,8 @@ describe('Prove Endpoint', () => {
     expect(response.status).toBe(200);
     expect(response.body.message).toBe('Proof generated successfully');
     expect(response.body.proof).toBeDefined();
+    expect(Array.isArray(response.body.proof.proof)).toBe(true);
+    expect(response.body.proof.proof).toEqual([1, 2, 3]);
   });
 
   it('should return 500 when proof generation fails', async () => {

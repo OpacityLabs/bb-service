@@ -145,9 +145,16 @@ export function createApp(dependencies: Dependencies): Express {
     
     try {
       const proof = await dependencies.proofService.generateProof(circuit, input);
+      
+      // Convert Uint8Array to regular array for JSON serialization
+      const serializedProof = {
+        ...proof,
+        proof: Array.from(proof.proof)
+      };
+      
       res.status(200).json({ 
         message: 'Proof generated successfully', 
-        proof: proof 
+        proof: serializedProof 
       });
     } catch (error) {
       console.error('Error generating proof:', error);
@@ -170,7 +177,13 @@ export function createApp(dependencies: Dependencies): Express {
     const { circuit, proof } = req.body;
     
     try {
-      const isValid = await dependencies.bbCli.verifyProof(circuit, proof);
+      // Convert proof array back to Uint8Array if needed
+      const proofData = {
+        ...proof,
+        proof: Array.isArray(proof.proof) ? new Uint8Array(proof.proof) : proof.proof
+      };
+      
+      const isValid = await dependencies.bbCli.verifyProof(circuit, proofData);
       res.status(200).json({ 
         message: 'Proof verification completed', 
         isValid: isValid 

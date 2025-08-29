@@ -85,12 +85,11 @@ describe('Docker Integration Test', () => {
     expect(responseBody.message).toBe('Proof generated successfully');
     expect(responseBody.proof).toBeDefined();
     expect(responseBody.proof.proof).toBeDefined();
-    expect(responseBody.proof.proof).toEqual(expect.any(Object));
     
-    // Verify the proof is not empty
-    if (responseBody.proof.proof.data) {
-      expect(responseBody.proof.proof.data.length).toBeGreaterThan(0);
-    }
+    // Verify proof is returned as array of numbers, not object with string keys
+    expect(Array.isArray(responseBody.proof.proof)).toBe(true);
+    expect(responseBody.proof.proof.length).toBeGreaterThan(0);
+    expect(responseBody.proof.proof.every((item: any) => typeof item === 'number')).toBe(true);
 
     // Verify the proof using the /verify endpoint
     console.log('Verifying proof with /verify endpoint...');
