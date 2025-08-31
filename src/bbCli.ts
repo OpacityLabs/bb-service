@@ -15,6 +15,7 @@ const unlinkAsync = promisify(unlink);
 export interface BBCli {
   generateProof(circuit: CompiledCircuit, input: InputMap): Promise<ProofData>;
   verifyProof(circuit: CompiledCircuit, proof: ProofData): Promise<boolean>;
+  parsePublicInputs(publicInputsBuffer: Uint8Array): string[];
 }
 
 export class DefaultBBCli implements BBCli {
@@ -67,8 +68,6 @@ export class DefaultBBCli implements BBCli {
         throw bbError;
       }
 
-      const publicInputsArray = parsePublicInputsBinary(publicInputsPath);
-
       // Read the generated proof
       try {
         const proofBuffer = await readFileAsync(proofPath);
@@ -78,8 +77,7 @@ export class DefaultBBCli implements BBCli {
         // Parse BB output format to ProofData
         return {
           proof: new Uint8Array(proofBuffer),
-          publicInputs: new Uint8Array(publicInputsBuffer), // BB CLI doesn't separate public inputs in the same way
-          publicInputArray: publicInputsArray
+          publicInputs: new Uint8Array(publicInputsBuffer)
         };
         
       } catch (statError: any) {
@@ -244,24 +242,22 @@ export class DefaultBBCli implements BBCli {
       process.on('close', () => resolve()); // Always resolve, ignore errors
     });
   }
-}
 
-function parsePublicInputsBinary(filePath: string): string[] {
-  const FIELD_BYTE_SIZE = 32;
-  const fileBuffer = readFileSync(filePath);
-  const numInputs = fileBuffer.length / FIELD_BYTE_SIZE;
+  parsePublicInputs(publicInputsBuffer: Uint8Array): string[] {
+    const FIELD_BYTE_SIZE = 32;
+    const numInputs = publicInputsBuffer.length / FIELD_BYTE_SIZE;
 
-  if (!Number.isInteger(numInputs)) {
-    throw new Error(`Invalid public inputs binary length: ${fileBuffer.length}, not divisible by ${FIELD_BYTE_SIZE}`);
+    if (!Number.isInteger(numInputs)) {
+      throw new Error(`Invalid public inputs binary length: ${publicInputsBuffer.length}, not divisible by ${FIELD_BYTE_SIZE}`);
+    }
+
+    const publicInputs: string[] = [];
+
+    for (let i = 0; i < numInputs; i++) {
+      const chunk = publicInputsBuffer.slice(i * FIELD_BYTE_SIZE, (i + 1) * FIELD_BYTE_SIZE);
+      publicInputs.push('0x' + Buffer.from(chunk).toString('hex'));
+    }
+
+    return publicInputs;
   }
-
-  const publicInputs: string[] = [];
-
-  for (let i = 0; i < numInputs; i++) {
-    const chunk = fileBuffer.slice(i * FIELD_BYTE_SIZE, (i + 1) * FIELD_BYTE_SIZE);
-    // Convert chunk to hex string with 0x prefix
-    publicInputs.push('0x' + chunk.toString('hex'));
-  }
-
-  return publicInputs;
 }

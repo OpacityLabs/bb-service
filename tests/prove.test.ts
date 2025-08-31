@@ -1,6 +1,6 @@
 import request from 'supertest';
 import { Express } from 'express';
-import { createApp, Dependencies, ProofService, validateProveRequest } from '../src/index';
+import { createApp, Dependencies, ProofService, validateProveRequest, validateParsePublicInputsRequest } from '../src/index';
 import { CompiledCircuit, InputMap } from '@noir-lang/noir_js';
 import { BBCli } from '../src/bbCli';
 
@@ -20,6 +20,28 @@ class MockBBCli implements BBCli {
       throw new Error('Mock BB CLI proof verification failed');
     }
     return true; // Always return valid for mock
+  }
+
+  parsePublicInputs(publicInputsBuffer: Uint8Array): string[] {
+    if (this.shouldFail) {
+      throw new Error('Mock BB CLI parsePublicInputs failed');
+    }
+    
+    // Mock implementation: convert each 32-byte chunk to hex
+    const FIELD_BYTE_SIZE = 32;
+    const numInputs = publicInputsBuffer.length / FIELD_BYTE_SIZE;
+    
+    if (!Number.isInteger(numInputs)) {
+      throw new Error(`Invalid public inputs binary length: ${publicInputsBuffer.length}, not divisible by ${FIELD_BYTE_SIZE}`);
+    }
+    
+    const result: string[] = [];
+    for (let i = 0; i < numInputs; i++) {
+      const chunk = publicInputsBuffer.slice(i * FIELD_BYTE_SIZE, (i + 1) * FIELD_BYTE_SIZE);
+      result.push('0x' + Buffer.from(chunk).toString('hex'));
+    }
+    
+    return result;
   }
 
   setShouldFail(shouldFail: boolean) {
@@ -210,5 +232,52 @@ describe('validateProveRequest', () => {
   it('should return false for invalid request', () => {
     expect(validateProveRequest({})).toBe(false);
     expect(validateProveRequest({ circuit: { bytecode: 'test' } })).toBe(false);
+  });
+});
+
+describe('parsePublicInputs Endpoint', () => {
+  let app: Express;
+  let mockBBCli: MockBBCli;
+  let mockProofService: MockProofService;
+
+  beforeEach(() => {
+    mockBBCli = new MockBBCli();
+    mockProofService = new MockProofService(mockBBCli);
+    const dependencies: Dependencies = {
+      proofService: mockProofService,
+      bbCli: mockBBCli
+    };
+    app = createApp(dependencies);
+  });
+
+  it('should return 400 for invalid request body', async () => {
+    const response = await request(app)
+      .post('/parsePublicInputs')
+      .send({});
+
+    expect(response.status).toBe(400);
+  });
+
+  it('should parse binary buffer successfully', async () => {
+    // Create 64 bytes = 2 field elements of 32 bytes each
+    const buffer = Buffer.alloc(64, 1); // All bytes are 1
+    const base64Buffer = buffer.toString('base64');
+    
+    const response = await request(app)
+      .post('/parsePublicInputs')
+      .send({ publicInputsBuffer: base64Buffer });
+
+    expect(response.status).toBe(200);
+    expect(response.body.publicInputs).toHaveLength(2);
+  });
+});
+
+describe('validateParsePublicInputsRequest', () => {
+  it('should return true for valid request', () => {
+    expect(validateParsePublicInputsRequest({ publicInputsBuffer: 'SGVsbG8=' })).toBe(true);
+  });
+
+  it('should return false for invalid request', () => {
+    expect(validateParsePublicInputsRequest({})).toBe(false);
   });
 });

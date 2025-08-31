@@ -14,6 +14,11 @@ export interface VerifyRequest {
   proof: ProofData;
 }
 
+export interface ParsePublicInputsRequest {
+  // base64 because I'm lazy
+  publicInputsBuffer: string;
+}
+
 export interface ProofService {
   generateProof(circuit: CompiledCircuit, input: InputMap): Promise<any>;
 }
@@ -120,6 +125,18 @@ export function validateVerifyRequest(body: any): body is VerifyRequest {
   return true;
 }
 
+export function validateParsePublicInputsRequest(body: any): body is ParsePublicInputsRequest {
+  if (!body || typeof body !== 'object') {
+    return false;
+  }
+  
+  if (!body.publicInputsBuffer || typeof body.publicInputsBuffer !== 'string') {
+    return false;
+  }
+  
+  return true;
+}
+
 export function createApp(dependencies: Dependencies): Express {
   const app = express();
   app.use(express.json({ limit: '10mb' })); // Increase limit for large circuit files
@@ -192,6 +209,37 @@ export function createApp(dependencies: Dependencies): Express {
       console.error('Error verifying proof:', error);
       res.status(500).json({ 
         error: 'Failed to verify proof', 
+        details: error instanceof Error ? error.message : 'Unknown error' 
+      });
+    }
+  });
+
+  app.post('/parsePublicInputs', async (req: Request, res: Response) => {
+    console.log('Received a request to /parsePublicInputs');
+    
+    if (!validateParsePublicInputsRequest(req.body)) {
+      return res.status(400).json({ 
+        error: 'Invalid request body. Expected publicInputsBuffer as a base64-encoded string.' 
+      });
+    }
+    
+    const { publicInputsBuffer } = req.body;
+    
+    try {
+      // Decode base64 string to Buffer, then convert to Uint8Array
+      const buffer = new Uint8Array(Buffer.from(publicInputsBuffer, 'base64'));
+      
+      // Parse the public inputs using BBCli
+      const parsedInputs = dependencies.bbCli.parsePublicInputs(buffer);
+      
+      res.status(200).json({ 
+        message: 'Public inputs parsed successfully', 
+        publicInputs: parsedInputs 
+      });
+    } catch (error) {
+      console.error('Error parsing public inputs:', error);
+      res.status(500).json({ 
+        error: 'Failed to parse public inputs', 
         details: error instanceof Error ? error.message : 'Unknown error' 
       });
     }
