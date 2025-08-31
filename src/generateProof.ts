@@ -1,6 +1,5 @@
 import { CompiledCircuit, InputMap } from '@noir-lang/noir_js';
-import { ProofData } from '@noir-lang/types';
-import { BBCli } from './bbCli';
+import { BBCli, ProofData } from './bbCli';
 
 export async function generateProof(
     circuit: CompiledCircuit,

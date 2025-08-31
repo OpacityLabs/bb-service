@@ -1,16 +1,22 @@
 import { spawn } from 'child_process';
 import { promisify } from 'util';
-import { writeFile, readFile, unlink, readFileSync } from 'fs';
+import { writeFile, readFile, unlink } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { randomBytes } from 'crypto';
 import { CompiledCircuit, InputMap } from '@noir-lang/noir_js';
-import { ProofData } from '@noir-lang/types';
 import { Noir } from '@noir-lang/noir_js';
 
 const writeFileAsync = promisify(writeFile);
 const readFileAsync = promisify(readFile);
 const unlinkAsync = promisify(unlink);
+
+export type ProofData = {
+  /** @description An byte array representing the proof */
+  proof: Uint8Array;
+  /** @description Public inputs of a proof */
+  publicInputs: Uint8Array;
+};
 
 export interface BBCli {
   generateProof(circuit: CompiledCircuit, input: InputMap): Promise<ProofData>;

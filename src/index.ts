@@ -1,8 +1,7 @@
 import express, { Express, Request, Response } from 'express';
 import { CompiledCircuit, InputMap } from '@noir-lang/noir_js';
-import { ProofData } from '@noir-lang/types';
 import { generateProof } from './generateProof';
-import { BBCli, DefaultBBCli } from './bbCli';
+import { BBCli, DefaultBBCli, ProofData } from './bbCli';
 
 export interface ProveRequest {
   circuit: CompiledCircuit;
