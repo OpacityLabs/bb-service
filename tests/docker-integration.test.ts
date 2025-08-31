@@ -82,6 +82,7 @@ describe('Docker Integration Test', () => {
     expect(response.status).toBe(200);
 
     const responseBody = await response.json();
+    console.log(responseBody.proof.publicInputArray);
     expect(responseBody.message).toBe('Proof generated successfully');
     expect(responseBody.proof).toBeDefined();
     expect(responseBody.proof.proof).toBeDefined();

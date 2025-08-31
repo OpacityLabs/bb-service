@@ -2,7 +2,7 @@
 FROM ubuntu:24.04 AS bb-tools
 
 # -- argument for version -------------------------------------------------
-        ARG BB_VERSION=0.82.3
+        ARG BB_VERSION=0.84.0
 
 # -- packages --------------------------------------------------------------
 RUN apt-get update && apt-get install -y --no-install-recommends \

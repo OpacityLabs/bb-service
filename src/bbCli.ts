@@ -1,6 +1,6 @@
 import { spawn } from 'child_process';
 import { promisify } from 'util';
-import { writeFile, readFile, unlink } from 'fs';
+import { writeFile, readFile, unlink, readFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { randomBytes } from 'crypto';
@@ -33,6 +33,7 @@ export class DefaultBBCli implements BBCli {
     const circuitPath = join(tempDir, 'circuit.json');
     const witnessPath = join(tempDir, 'witness.gz');
     const proofPath = join(tempDir, 'proof');
+    const publicInputsPath = join(tempDir, 'public_inputs');
 
     try {
       // Create temp directory
@@ -66,14 +67,19 @@ export class DefaultBBCli implements BBCli {
         throw bbError;
       }
 
+      const publicInputsArray = parsePublicInputsBinary(publicInputsPath);
+
       // Read the generated proof
       try {
         const proofBuffer = await readFileAsync(proofPath);
+        const publicInputsBuffer = await readFileAsync(publicInputsPath);
+
         
         // Parse BB output format to ProofData
         return {
           proof: new Uint8Array(proofBuffer),
-          publicInputs: [] // BB CLI doesn't separate public inputs in the same way
+          publicInputs: new Uint8Array(publicInputsBuffer), // BB CLI doesn't separate public inputs in the same way
+          publicInputArray: publicInputsArray
         };
         
       } catch (statError: any) {
@@ -103,6 +109,7 @@ export class DefaultBBCli implements BBCli {
     // File paths
     const circuitPath = join(tempDir, 'circuit.json');
     const proofPath = join(tempDir, 'proof');
+    const publicInputsPath = join(tempDir, 'public_inputs');
     let vkPath = join(tempDir, 'vk');
 
     try {
@@ -115,6 +122,10 @@ export class DefaultBBCli implements BBCli {
       // Write proof to file - ensure it's a Uint8Array
       const proofData = proof.proof instanceof Uint8Array ? proof.proof : new Uint8Array(Object.values(proof.proof));
       await writeFileAsync(proofPath, proofData);
+
+      // Write public inputs to file - ensure it's a Uint8Array
+      const publicInputsData = proof.publicInputs instanceof Uint8Array ? proof.publicInputs : new Uint8Array(Object.values(proof.publicInputs));
+      await writeFileAsync(publicInputsPath, publicInputsData);
 
       // Step 1: Generate verification key from circuit
       // Create vk directory (BB creates 'vk' file inside it)
@@ -142,7 +153,8 @@ export class DefaultBBCli implements BBCli {
           'verify',
           '--scheme', 'ultra_honk',
           '-k', vkPath,
-          '-p', proofPath
+          '-p', proofPath,
+          '-i', publicInputsPath
         ]);
         
         // If bb verify succeeds, the proof is valid
@@ -232,4 +244,24 @@ export class DefaultBBCli implements BBCli {
       process.on('close', () => resolve()); // Always resolve, ignore errors
     });
   }
+}
+
+function parsePublicInputsBinary(filePath: string): string[] {
+  const FIELD_BYTE_SIZE = 32;
+  const fileBuffer = readFileSync(filePath);
+  const numInputs = fileBuffer.length / FIELD_BYTE_SIZE;
+
+  if (!Number.isInteger(numInputs)) {
+    throw new Error(`Invalid public inputs binary length: ${fileBuffer.length}, not divisible by ${FIELD_BYTE_SIZE}`);
+  }
+
+  const publicInputs: string[] = [];
+
+  for (let i = 0; i < numInputs; i++) {
+    const chunk = fileBuffer.slice(i * FIELD_BYTE_SIZE, (i + 1) * FIELD_BYTE_SIZE);
+    // Convert chunk to hex string with 0x prefix
+    publicInputs.push('0x' + chunk.toString('hex'));
+  }
+
+  return publicInputs;
 }
