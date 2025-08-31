@@ -6,7 +6,10 @@ import { BBCli } from '../src/bbCli';
 
 class MockBBCli implements BBCli {
   private shouldFail: boolean = false;
-  private mockProof: any = { proof: new Uint8Array([1, 2, 3]), publicInputs: [] };
+  private mockProof: any = { 
+    proof: new Uint8Array([1, 2, 3]), 
+    publicInputs: new Uint8Array([4, 5, 6]) 
+  };
 
   async generateProof(circuit: CompiledCircuit, input: InputMap): Promise<any> {
     if (this.shouldFail) {
@@ -139,6 +142,27 @@ describe('Prove Endpoint', () => {
     expect(response.body.proof).toBeDefined();
     expect(Array.isArray(response.body.proof.proof)).toBe(true);
     expect(response.body.proof.proof).toEqual([1, 2, 3]);
+  });
+
+  it('should serialize publicInputs as array in response', async () => {
+    const validRequest = {
+      circuit: { 
+        bytecode: 'valid-bytecode',
+        abi: { parameters: [] },
+        debug_symbols: 'mock-debug-symbols',
+        file_map: {}
+      },
+      input: { x: 42, y: 10 }
+    };
+
+    const response = await request(app)
+      .post('/prove')
+      .send(validRequest);
+
+    expect(response.status).toBe(200);
+    expect(response.body.proof.publicInputs).toBeDefined();
+    expect(Array.isArray(response.body.proof.publicInputs)).toBe(true);
+    expect(response.body.proof.publicInputs).toEqual([4, 5, 6]);
   });
 
   it('should return 500 when proof generation fails', async () => {

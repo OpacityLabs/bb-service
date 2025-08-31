@@ -165,6 +165,7 @@ export function createApp(dependencies: Dependencies): Express {
       // Convert Uint8Array to regular array for JSON serialization
       const serializedProof = {
         ...proof,
+        publicInputs: Array.from(proof.publicInputs),
         proof: Array.from(proof.proof)
       };
       
@@ -213,6 +214,7 @@ export function createApp(dependencies: Dependencies): Express {
     }
   });
 
+  // TODO: yeah this was a stupid feature, ignore
   app.post('/parsePublicInputs', async (req: Request, res: Response) => {
     console.log('Received a request to /parsePublicInputs');
     
