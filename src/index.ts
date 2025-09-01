@@ -143,7 +143,14 @@ export function createApp(dependencies: Dependencies): Express {
     const { circuit, input } = req.body;
     
     try {
+      const startTime = Date.now();
+      console.log('Starting proof generation...');
+      
       const proof = await dependencies.proofService.generateProof(circuit, input);
+      
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+      console.log(`Proof generation completed in ${duration}ms`);
       
       // Convert Uint8Array to regular array for JSON serialization
       const serializedProof = {
